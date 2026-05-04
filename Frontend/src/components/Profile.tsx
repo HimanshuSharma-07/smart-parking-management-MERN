@@ -13,6 +13,7 @@ import {
 } from '../services/bookings';
 import { updateProfileDetails, updateProfileImage } from '../services/user';
 import { setUser } from '../store/authSlice';
+import { Skeleton } from './ui/Skeleton';
 
 type TabType = 'Personal Info' | 'Vehicles' | 'Payment Methods' | 'Membership' | 'Settings';
 
@@ -159,7 +160,19 @@ const Profile: React.FC = () => {
         </div>
 
         {!initialized && (
-          <p className="text-gray-600 py-8">Loading…</p>
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col md:flex-row gap-6 items-center md:items-start">
+              <Skeleton className="w-24 h-24 rounded-full shrink-0" />
+              <div className="flex-1 space-y-3 py-2 w-full">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-10 w-32 mt-4" />
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-6 h-64">
+              <Skeleton className="h-full w-full rounded-xl" />
+            </div>
+          </div>
         )}
 
         {initialized && !user && (
@@ -416,7 +429,25 @@ const Profile: React.FC = () => {
                 <h3 className="text-lg font-bold text-gray-900">Recent Bookings</h3>
               </div>
 
-              {loadingBookings && <p className="text-sm text-gray-500">Loading…</p>}
+              {loadingBookings && (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="w-12 h-12 rounded-lg" />
+                        <div className="space-y-2">
+                          <Skeleton className="w-32 h-5" />
+                          <Skeleton className="w-24 h-3" />
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-right flex flex-col items-end">
+                        <Skeleton className="w-16 h-5" />
+                        <Skeleton className="w-20 h-6 rounded-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {!loadingBookings && recentBookings.length === 0 && (
                 <p className="text-sm text-gray-600">No recent bookings yet.</p>

@@ -117,9 +117,11 @@ const QuickVehicleAction = ({ onActionSuccess }: { onActionSuccess?: () => void 
                 <div>
                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Booking Status</div>
                   <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tight border ${
-                    booking.bookingStatus === 'active' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                    booking.bookingStatus === 'active' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                    booking.bookingStatus === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                    'bg-indigo-50 text-indigo-700 border-indigo-100'
                   }`}>
-                    {booking.bookingStatus === 'active' ? 'On-Site' : 'Reserved'}
+                    {booking.bookingStatus === 'active' ? 'On-Site' : booking.bookingStatus === 'confirmed' ? 'Paid & Waiting' : 'Reserved'}
                   </span>
                 </div>
                 <div className="text-right">
@@ -163,7 +165,7 @@ const QuickVehicleAction = ({ onActionSuccess }: { onActionSuccess?: () => void 
               )}
 
               <div className="grid grid-cols-1 gap-3">
-                {booking.bookingStatus === 'reserved' ? (
+                {(booking.bookingStatus === 'reserved' || booking.bookingStatus === 'confirmed') ? (
                   <button
                     onClick={handleEntry}
                     disabled={processing}

@@ -6,10 +6,12 @@ import api from '../services/api';
 import type { BackendParkingSlot } from '../services/parking';
 import { fetchSlotsForLot } from '../services/parking';
 import { useAppSelector } from '../store/hooks';
+import { verifyRazorpayPayment } from '../services/payment';
 import CreateSlotsModal from '../admin/components/CreateSlotsModal';
 import CreateSingleSlotModal from '../admin/components/CreateSingleSlotModal';
 import ConfirmDialog from './ConfirmDialog';
 import { getSocket, joinLotRoom, leaveLotRoom } from '../services/socket';
+import { Skeleton } from './ui/Skeleton';
 
 interface ParkingSpot {
   id: string;
@@ -312,29 +314,71 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
     try {
       const start = new Date(startTime);
       const end = new Date(start.getTime() + duration * 3_600_000);
-      await api.post(`/bookings/parking-slots/${selectedSpot.id}/booking`, {
+      
+      const response = await api.post(`/bookings/parking-slots/${selectedSpot.id}/booking`, {
         vehicleNumber,
         startTime: start.toISOString(),
         endTime: end.toISOString(),
       });
 
-      const booking: BookingData = {
-        spot: selectedSpot.label,
-        floor: selectedFloor,
-        vehicleNumber,
-        startTime: start.toISOString(),
-        duration,
-        totalPrice: calculateTotalPrice(),
+      const { booking, razorpayOrder, key } = response.data.data;
+
+      // Razorpay Checkout
+      const options = {
+        key: key || import.meta.env.VITE_RAZORPAY_KEY_ID || '',
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: 'Parkify',
+        description: `Booking for ${selectedSpot.label}`,
+        order_id: razorpayOrder.id,
+        handler: async (paymentResponse: any) => {
+          try {
+            await verifyRazorpayPayment({
+              razorpay_order_id: paymentResponse.razorpay_order_id,
+              razorpay_payment_id: paymentResponse.razorpay_payment_id,
+              razorpay_signature: paymentResponse.razorpay_signature,
+              bookingId: booking._id
+            });
+
+            const bookingData: BookingData = {
+              spot: selectedSpot.label,
+              floor: selectedFloor,
+              vehicleNumber,
+              startTime: start.toISOString(),
+              duration,
+              totalPrice: calculateTotalPrice(),
+            };
+
+            onConfirmBooking?.(bookingData);
+            setShowConfirmDialog(false);
+            onClose();
+          } catch (err: any) {
+            setBookingError(err.response?.data?.message || 'Payment verification failed');
+          }
+        },
+        prefill: {
+          name: user?.fullName || '',
+          email: user?.email || '',
+        },
+        theme: {
+          color: '#111827',
+        },
+        modal: {
+          ondismiss: () => {
+            setSubmitting(false);
+          }
+        }
       };
 
-      onConfirmBooking?.(booking);
-      setShowConfirmDialog(false);
-      onClose();
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+
     } catch (e) {
       setBookingError(bookingErrMessage(e));
       setShowConfirmDialog(false);
     } finally {
-      setSubmitting(false);
+      // Don't set submitting to false here if Razorpay is open
+      // setSubmitting(false);
     }
   };
 
@@ -486,7 +530,37 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
             )}
 
             {slotsLoading && (
-              <div className="py-12 text-center text-gray-600">Loading layout…</div>
+              <div className="py-6">
+                <div className="mb-8">
+                  <Skeleton className="h-4 w-24 mb-4" />
+                  <div className="flex gap-3">
+                    <Skeleton className="h-10 w-24 rounded-xl" />
+                    <Skeleton className="h-10 w-24 rounded-xl" />
+                    <Skeleton className="h-10 w-24 rounded-xl" />
+                  </div>
+                </div>
+                <Skeleton className="w-full h-32 rounded-2xl mb-8" />
+                <div className="bg-white border border-gray-200 rounded-2xl p-6 lg:p-8 mb-6 shadow-sm overflow-hidden">
+                  <div className="flex justify-center mb-10">
+                    <Skeleton className="h-8 w-32 rounded-full" />
+                  </div>
+                  <div className="space-y-5">
+                    {[1, 2, 3].map(row => (
+                      <div key={row}>
+                        <div className="flex items-center gap-3 mb-2">
+                          <Skeleton className="h-4 w-12" />
+                          <div className="flex-1 h-px bg-gray-200" />
+                        </div>
+                        <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-2">
+                          {[...Array(10)].map((_, i) => (
+                            <Skeleton key={i} className="aspect-square rounded-lg" />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
 
             {!slotsLoading && slotsError && (

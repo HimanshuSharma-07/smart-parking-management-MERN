@@ -9,6 +9,7 @@ import EditLotModal from '../admin/components/EditLotModal';
 import EditLotImageModal from '../admin/components/EditLotImageModal';
 import CreateSlotsModal from '../admin/components/CreateSlotsModal';
 import ConfirmDialog from './ConfirmDialog';
+import { Skeleton } from './ui/Skeleton';
 
 import type { BackendParkingLot, BackendParkingSlot } from '../services/parking';
 import { fetchAllParkingLots, fetchSlotsForLot } from '../services/parking';
@@ -227,7 +228,24 @@ const ParkingLots: React.FC = () => {
         )}
 
         {loading ? (
-          <div className="text-center py-16 text-gray-600">Loading parking lots…</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <Skeleton className="w-full h-48 rounded-none" />
+                <div className="p-5 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <Skeleton className="w-2/3 h-6" />
+                    <Skeleton className="w-16 h-6" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="w-4 h-4 rounded-full" />
+                    <Skeleton className="w-full h-4" />
+                  </div>
+                  <Skeleton className="w-full h-12 rounded-xl mt-4" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredLots.map(lot => (

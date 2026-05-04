@@ -1,308 +1,161 @@
 import React, { useState } from 'react';
-import { X, CreditCard, Wallet, Building2, Smartphone, Shield, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Loader2, CreditCard } from 'lucide-react';
+import { createRazorpayOrder, verifyRazorpayPayment } from '../services/payment';
 
 interface PaymentModalProps {
-  isOpen: boolean;
+  bookingId: string;
+  amount: number;
+  onSuccess: (paymentId: string) => void;
   onClose: () => void;
-  bookingDetails: {
-    parkingLotName: string;
-    spot: string;
-    floor: number;
-    vehicleNumber: string;
-    startTime: string;
-    duration: number;
-    totalPrice: number;
-  };
-  onPaymentSuccess: (paymentDetails: any) => void;
 }
 
+const PaymentModal: React.FC<PaymentModalProps> = ({ bookingId, amount, onSuccess, onClose }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
 
-const PaymentModal: React.FC<PaymentModalProps> = ({
-  isOpen,
-  onClose,
-  bookingDetails,
-  onPaymentSuccess,
-}) => {
-  const [selectedMethod, setSelectedMethod] = useState<string>('card');
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  if (!isOpen) return null;
-
-  // Payment methods
-  const paymentMethods = [
-    {
-      id: 'card',
-      name: 'Credit/Debit Card',
-      icon: <CreditCard className="w-5 h-5" />,
-      description: 'Visa, Mastercard, Amex',
-    },
-    {
-      id: 'upi',
-      name: 'UPI',
-      icon: <Smartphone className="w-5 h-5" />,
-      description: 'Google Pay, PhonePe, Paytm',
-    },
-    {
-      id: 'netbanking',
-      name: 'Net Banking',
-      icon: <Building2 className="w-5 h-5" />,
-      description: 'All major banks',
-    },
-    {
-      id: 'wallet',
-      name: 'Wallet',
-      icon: <Wallet className="w-5 h-5" />,
-      description: 'Paytm, PhonePe, Amazon Pay',
-    },
-  ];
-
-  // Price breakdown
-  const basePrice = bookingDetails.totalPrice;
-  const tax = Math.round(basePrice * 0.18 * 100) / 100; // 18% GST
-  const platformFee = 2;
-  const totalAmount = basePrice + tax + platformFee;
-
-  // Razorpay integration
   const handlePayment = async () => {
-    setIsProcessing(true);
+    setLoading(true);
+    setError(null);
+    setStatus('processing');
 
     try {
-      // Step 1: Create order on your backend
-      const orderResponse = await fetch('/api/create-razorpay-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: totalAmount * 100, // Razorpay expects amount in paise
-          currency: 'INR',
-          receipt: `receipt_${Date.now()}`,
-          bookingDetails: bookingDetails,
-        }),
-      });
+      const order = await createRazorpayOrder(bookingId);
 
-      const orderData = await orderResponse.json();
-
-      // Step 2: Initialize Razorpay
       const options = {
-        key: import.meta.env.VITE_RAZERPAY_KEY, // Your Razorpay Key ID
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'SmartPark',
-        description: `Parking at ${bookingDetails.parkingLotName}`,
-        image: '/logo.png', // Your logo
-        order_id: orderData.id,
-        handler: function (response: any) {
-          // Payment successful
-          handlePaymentSuccess(response);
+        key: order.key,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Parkify",
+        description: `Payment for Parking Slot Booking`,
+        order_id: order.orderId,
+        handler: async (response: any) => {
+          try {
+            setLoading(true);
+            await verifyRazorpayPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              bookingId: bookingId
+            });
+            setStatus('success');
+            setTimeout(() => onSuccess(response.razorpay_payment_id), 2000);
+          } catch (err: any) {
+            setError(err.response?.data?.message || "Payment verification failed");
+            setStatus('failed');
+          } finally {
+            setLoading(false);
+          }
         },
         prefill: {
-          name: 'John Doe', // Get from user profile
-          email: 'john@example.com',
-          contact: '9999999999',
-        },
-        notes: {
-          spot: bookingDetails.spot,
-          floor: bookingDetails.floor,
-          vehicle: bookingDetails.vehicleNumber,
+          name: "", 
+          email: "",
+          contact: ""
         },
         theme: {
-          color: '#2563eb', // Blue color matching your theme
+          color: "#111827"
         },
         modal: {
-          ondismiss: function () {
-            setIsProcessing(false);
-          },
-        },
+          ondismiss: () => {
+            setLoading(false);
+            setStatus('idle');
+          }
+        }
       };
 
-      const razorpay = new (window as any).Razorpay(options);
-      razorpay.open();
-    } catch (error) {
-      console.error('Payment error:', error);
-      setIsProcessing(false);
-      alert('Payment failed. Please try again.');
-    }
-  };
-
-  const handlePaymentSuccess = async (razorpayResponse: any) => {
-    try {
-      // Step 3: Verify payment on backend
-      const verifyResponse = await fetch('/api/verify-razorpay-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          razorpay_order_id: razorpayResponse.razorpay_order_id,
-          razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-          razorpay_signature: razorpayResponse.razorpay_signature,
-          bookingDetails: bookingDetails,
-        }),
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        setError(response.error.description);
+        setStatus('failed');
+        setLoading(false);
       });
-
-      const verifyData = await verifyResponse.json();
-
-      if (verifyData.success) {
-        // Payment verified successfully
-        setIsProcessing(false);
-        onPaymentSuccess({
-          ...razorpayResponse,
-          totalAmount: totalAmount,
-          paymentMethod: selectedMethod,
-        });
-      } else {
-        setIsProcessing(false);
-        alert('Payment verification failed');
-      }
-    } catch (error) {
-      console.error('Verification error:', error);
-      setIsProcessing(false);
-      alert('Payment verification failed');
+      rzp.open();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Could not initiate payment");
+      setStatus('failed');
+      setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[95vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-60 p-4">
+      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Complete Payment</h2>
-            <p className="text-sm text-gray-600 mt-1">Secure payment powered by Razorpay</p>
-          </div>
-          <button
+        <div className="relative px-8 pt-8 pb-4">
+          <button 
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            disabled={isProcessing}
+            className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            <X className="w-6 h-6 text-gray-600" />
+            <X className="w-5 h-5 text-gray-400" />
           </button>
+          <div className="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-gray-900/20">
+            <CreditCard className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Secure Payment</h2>
+          <p className="text-gray-500 text-sm mt-1">Complete your transaction using Razorpay</p>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Booking Summary */}
-          <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
-            <h3 className="font-bold text-gray-900 mb-3">Booking Summary</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Parking Lot:</span>
-                <span className="font-semibold text-gray-900">{bookingDetails.parkingLotName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Spot:</span>
-                <span className="font-semibold text-gray-900">
-                  {bookingDetails.spot} (Floor {bookingDetails.floor})
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Vehicle:</span>
-                <span className="font-semibold text-gray-900">{bookingDetails.vehicleNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Duration:</span>
-                <span className="font-semibold text-gray-900">
-                  {bookingDetails.duration} {bookingDetails.duration === 1 ? 'hour' : 'hours'}
-                </span>
-              </div>
+        {/* Content */}
+        <div className="px-8 py-6">
+          <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 mb-8">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-500 font-medium">Amount to Pay</span>
+              <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded-md font-bold uppercase tracking-wider">INR</span>
             </div>
+            <div className="text-4xl font-black text-gray-900">₹{amount.toFixed(2)}</div>
           </div>
 
-          {/* Price Breakdown */}
-          <div className="mb-6">
-            <h3 className="font-bold text-gray-900 mb-3">Price Breakdown</h3>
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Parking Fee ({bookingDetails.duration}h)</span>
-                  <span className="font-semibold text-gray-900">₹{basePrice.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">GST (18%)</span>
-                  <span className="font-semibold text-gray-900">₹{tax.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Platform Fee</span>
-                  <span className="font-semibold text-gray-900">₹{platformFee.toFixed(2)}</span>
-                </div>
-                <div className="border-t border-gray-300 pt-3 flex justify-between">
-                  <span className="font-bold text-gray-900">Total Amount</span>
-                  <span className="text-2xl font-bold text-blue-600">₹{totalAmount.toFixed(2)}</span>
-                </div>
+          {status === 'success' ? (
+            <div className="flex flex-col items-center py-6 text-center animate-in slide-in-from-bottom-4 duration-500">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Payment Successful</h3>
+              <p className="text-gray-500 text-sm mt-2">Your booking has been confirmed.</p>
+            </div>
+          ) : status === 'failed' ? (
+            <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-start gap-3 mb-6 animate-in shake duration-300">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-red-900">Payment Failed</p>
+                <p className="text-xs text-red-700 mt-1">{error || "An unexpected error occurred. Please try again."}</p>
               </div>
             </div>
-          </div>
+          ) : null}
 
-          {/* Payment Methods */}
-          <div className="mb-6">
-            <h3 className="font-bold text-gray-900 mb-3">Select Payment Method</h3>
-            <div className="space-y-3">
-              {paymentMethods.map((method) => (
-                <button
-                  key={method.id}
-                  onClick={() => setSelectedMethod(method.id)}
-                  disabled={isProcessing}
-                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                    selectedMethod === method.id
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
-                  } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        selectedMethod === method.id
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {method.icon}
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900">{method.name}</div>
-                      <div className="text-xs text-gray-600">{method.description}</div>
-                    </div>
-                    {selectedMethod === method.id && (
-                      <CheckCircle className="w-6 h-6 text-blue-600" />
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+          {status !== 'success' && (
+            <button
+              onClick={handlePayment}
+              disabled={loading}
+              className={`w-full py-4 rounded-2xl font-bold text-white transition-all transform active:scale-[0.98] flex items-center justify-center gap-3 ${
+                loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-900 hover:bg-black hover:shadow-xl hover:shadow-gray-900/20'
+              }`}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Pay Now ₹{amount.toFixed(2)}
+                </>
+              )}
+            </button>
+          )}
 
-          {/* Security Notice */}
-          <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
-            <Shield className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-gray-900 mb-1">
-                Secure Payment
-              </p>
-              <p className="text-xs text-gray-600">
-                Your payment information is encrypted and secure. We never store your card details.
-              </p>
-            </div>
-          </div>
+          {status === 'idle' && (
+            <p className="text-center text-[10px] text-gray-400 mt-6 uppercase font-bold tracking-[0.2em]">
+              Powered by Razorpay Secure
+            </p>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-          <button
-            onClick={handlePayment}
-            disabled={isProcessing}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isProcessing ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Processing...
-              </>
-            ) : (
-              <>
-                <CreditCard className="w-5 h-5" />
-                Pay ₹{totalAmount.toFixed(2)}
-              </>
-            )}
-          </button>
-          <p className="text-xs text-center text-gray-600 mt-3">
-            By proceeding, you agree to our Terms & Conditions
+        <div className="bg-gray-50 px-8 py-4 text-center border-t border-gray-100">
+          <p className="text-[10px] text-gray-400 font-medium leading-relaxed">
+            By proceeding, you agree to our Terms of Service and Privacy Policy. 
+            All transactions are encrypted and secure.
           </p>
         </div>
       </div>

@@ -41,19 +41,18 @@ const initSocket = (server: HttpServer) => {
     })
 
     io.on("connection", (socket) => {
-        console.log("🔌 Socket connected:", socket.id, "| user:", socket.data.user?._id ?? "guest")
 
         // Join a specific parking lot room (any authenticated user)
         socket.on("joinLot", (lotId: string) => {
             if (!socket.data.user) return
             socket.join(`lot:${lotId}`)
-            console.log(`User ${socket.data.user._id} joined lot room: lot:${lotId}`)
+            
         })
 
         // Join user-specific room
         if (socket.data.user?._id) {
             socket.join(`user:${socket.data.user._id}`)
-            console.log(`User joined their own room: user:${socket.data.user._id}`)
+            
         }
 
         // Leave a specific parking lot room
@@ -65,12 +64,12 @@ const initSocket = (server: HttpServer) => {
         socket.on("joinAdmin", () => {
             if (socket.data.user?.role === "admin") {
                 socket.join("admin")
-                console.log(`Admin ${socket.data.user._id} joined admin room`)
+                
             }
         })
 
         socket.on("disconnect", () => {
-            console.log("❌ Socket disconnected:", socket.id)
+           
         })
     })
 }

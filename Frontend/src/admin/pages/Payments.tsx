@@ -6,6 +6,7 @@ import {
   CheckCircle2, XCircle, Clock, 
   User as UserIcon, Hash, ExternalLink 
 } from "lucide-react";
+import { Skeleton } from "../../components/ui/Skeleton";
 
 const Payments = () => {
   const [payments, setPayments] = useState<any[]>([]);
@@ -44,12 +45,58 @@ const Payments = () => {
     p._id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-50">
-      <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin"></div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Syncing Ledger</p>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 border-b border-gray-200 pb-8">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-5 w-48" />
+          </div>
+          <div className="w-full max-w-sm">
+            <Skeleton className="h-12 w-full rounded-xl" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-h-[400px]">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                <tr>
+                  {['Bill ID', 'Customer', 'Amount', 'Method', 'Transaction ID', 'Time', 'Status'].map((h, i) => (
+                    <th key={i} className="px-8 py-5">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i}>
+                    <td className="px-8 py-5"><Skeleton className="h-6 w-20" /></td>
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-lg" />
+                        <Skeleton className="h-5 w-32" />
+                      </div>
+                    </td>
+                    <td className="px-8 py-5"><Skeleton className="h-5 w-20" /></td>
+                    <td className="px-8 py-5"><Skeleton className="h-6 w-24 rounded-full" /></td>
+                    <td className="px-8 py-5"><Skeleton className="h-5 w-40" /></td>
+                    <td className="px-8 py-5">
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </td>
+                    <td className="px-8 py-5"><Skeleton className="h-6 w-24 rounded-full" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">

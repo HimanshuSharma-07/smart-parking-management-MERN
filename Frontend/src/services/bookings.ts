@@ -19,13 +19,22 @@ export interface PopulatedSlot {
   lotId?: PopulatedLot | string;
 }
 
+export interface RawPayment {
+  amount: number;
+  paymentMethod: 'online' | 'cash';
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  razorpayPaymentId?: string;
+  paidAt?: string;
+}
+
 export interface RawBooking {
   _id: string;
   vehicleNumber: string;
   startTime: string;
   endTime: string;
-  bookingStatus: 'active' | 'reserved' | 'completed' | 'cancelled';
+  bookingStatus: 'active' | 'reserved' | 'confirmed' | 'completed' | 'cancelled';
   slotId: PopulatedSlot | string;
+  payment?: RawPayment;
 }
 
 export type BookingStatusUI = 'active' | 'upcoming' | 'completed' | 'cancelled';
@@ -38,11 +47,14 @@ export interface MyBookingsCard {
   floor: number;
   vehicleNumber: string;
   startTime: string;
+  endTime: string;
   duration: number;
   totalPrice: number;
   status: BookingStatusUI;
   bookingRef: string;
   spotType: 'regular' | 'compact' | 'large' | 'ev-charging';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'unpaid';
+  paymentMethod?: 'online' | 'cash';
 }
 
 export async function fetchMyBookings(): Promise<RawBooking[]> {
@@ -80,7 +92,7 @@ function rawStatusToUi(b: RawBooking): BookingStatusUI {
   if (b.bookingStatus === 'completed') return 'completed';
   const now = Date.now();
   const start = new Date(b.startTime).getTime();
-  if (start > now && (b.bookingStatus === 'active' || b.bookingStatus === 'reserved')) {
+  if (start > now && (b.bookingStatus === 'active' || b.bookingStatus === 'reserved' || b.bookingStatus === 'confirmed')) {
     return 'upcoming';
   }
   return 'active';
@@ -99,6 +111,9 @@ export function mapRawToMyBookingsCard(b: RawBooking): MyBookingsCard {
   const endMs = new Date(b.endTime).getTime();
   const duration = Math.max(1, Math.round((endMs - startMs) / 3_600_000));
 
+  const paymentAmount = b.payment?.amount;
+  const computedPrice = paymentAmount != null ? paymentAmount : duration * pricePerHour;
+
   return {
     id: b._id,
     parkingLotName,
@@ -107,11 +122,14 @@ export function mapRawToMyBookingsCard(b: RawBooking): MyBookingsCard {
     floor: slotObj ? Number(slotObj.floor) : 0,
     vehicleNumber: b.vehicleNumber,
     startTime: b.startTime,
+    endTime: b.endTime,
     duration,
-    totalPrice: duration * pricePerHour,
+    totalPrice: computedPrice,
     status: rawStatusToUi(b),
     bookingRef: `BK-${String(b._id).slice(-6).toUpperCase()}`,
     spotType: slotTypeToSpotType(slotObj?.type ?? 'standard'),
+    paymentStatus: b.payment?.paymentStatus ?? 'unpaid',
+    paymentMethod: b.payment?.paymentMethod,
   };
 }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle, X, MapPin, Car, Calendar, Clock, DollarSign, Hash, IndianRupee } from 'lucide-react';
+import { CheckCircle, X, MapPin, Car, Calendar, Clock, Hash, IndianRupee } from 'lucide-react';
 
 interface BookingSuccessProps {
   isOpen: boolean;

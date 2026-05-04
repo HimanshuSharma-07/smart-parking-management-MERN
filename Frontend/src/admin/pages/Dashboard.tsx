@@ -6,6 +6,7 @@ import StatCard from "../components/StatCard";
 import QuickVehicleAction from "../components/QuickVehicleAction";
 import { useAppSelector } from "../../store/hooks";
 import { getSocket } from "../../services/socket";
+import { Skeleton } from "../../components/ui/Skeleton";
 
 const Dashboard = () => {
   const user = useAppSelector((state) => state.auth.user);
@@ -73,9 +74,35 @@ const Dashboard = () => {
 
   if (loading && !stats.slots) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <div className="w-10 h-10 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin"></div>
-        <p className="text-gray-500 font-medium">Loading Dashboard…</p>
+      <div className="min-h-screen bg-gray-50">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="space-y-8 pb-12">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-5 w-48" />
+              </div>
+              <Skeleton className="h-14 w-40 rounded-xl" />
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-1">
+                <Skeleton className="h-96 rounded-2xl" />
+              </div>
+              <div className="lg:col-span-2 space-y-8">
+                <Skeleton className="h-96 rounded-2xl" />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              {[1, 2].map(i => <Skeleton key={i} className="h-80 rounded-xl" />)}
+            </div>
+          </div>
+        </main>
       </div>
     );
   }

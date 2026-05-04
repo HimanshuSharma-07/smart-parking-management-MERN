@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Calendar, Clock, MapPin, Car, Search, Filter,
-  CheckCircle, XCircle, AlertCircle, Download,
+  CheckCircle, XCircle, AlertCircle, Download, CreditCard,
   ChevronRight, Hash, IndianRupee , Zap, ReceiptText,
+  BadgeCheck, CircleDashed,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -14,6 +15,9 @@ import {
 } from '../services/bookings';
 import { useAppSelector } from '../store/hooks';
 import { getSocket } from '../services/socket';
+import PaymentModal from '../components/PaymentModal';
+import { generateInvoicePDF } from '../utils/invoiceGenerator';
+import { Skeleton } from './ui/Skeleton';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -55,6 +59,31 @@ const StatusBadge: React.FC<{ status: BookingStatus }> = ({ status }) => {
   );
 };
 
+const PaymentBadge: React.FC<{ status: Booking['paymentStatus'] }> = ({ status }) => {
+  if (status === 'paid') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+        <BadgeCheck className="w-3 h-3" /> Paid
+      </span>
+    );
+  }
+  if (status === 'pending') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+        <CircleDashed className="w-3 h-3" /> Pending
+      </span>
+    );
+  }
+  if (status === 'failed') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+        <XCircle className="w-3 h-3" /> Failed
+      </span>
+    );
+  }
+  return null;
+};
+
 const SpotTypeBadge: React.FC<{ type: Booking['spotType'] }> = ({ type }) => {
   if (type === 'ev-charging') {
     return (
@@ -80,10 +109,15 @@ const SpotTypeBadge: React.FC<{ type: Booking['spotType'] }> = ({ type }) => {
 interface BookingCardProps {
   booking: Booking;
   onCancel: (id: string) => void;
+  onPay: (booking: Booking) => void;
+  onDownloadReceipt: (booking: Booking) => void;
 }
 
-const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel }) => {
+const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel, onPay, onDownloadReceipt }) => {
   const [expanded, setExpanded] = useState(false);
+  const canPayOnline =
+    (booking.status === 'active' || booking.status === 'upcoming') &&
+    booking.paymentStatus !== 'paid';
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all overflow-hidden">
@@ -116,10 +150,12 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel }) => {
             </div>
           </div>
 
-          {/* Right: price */}
+          {/* Right: price + payment badge */}
           <div className="text-right shrink-0">
             <div className="text-2xl font-bold text-gray-900">₹{booking.totalPrice}</div>
-            <div className="text-xs text-gray-400">total</div>
+            <div className="mt-1">
+              <PaymentBadge status={booking.paymentStatus} />
+            </div>
           </div>
         </div>
 
@@ -174,8 +210,11 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel }) => {
           </button>
 
           <div className="flex items-center gap-2">
-            {(booking.status === 'active' || booking.status === 'completed') && (
-              <button className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+            {(booking.paymentStatus === 'paid') && (
+              <button
+                onClick={() => onDownloadReceipt(booking)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+              >
                 <Download className="w-3.5 h-3.5" />
                 Receipt
               </button>
@@ -187,6 +226,15 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel }) => {
               >
                 <XCircle className="w-3.5 h-3.5" />
                 Cancel
+              </button>
+            )}
+            {canPayOnline && (
+              <button
+                onClick={() => onPay(booking)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                Pay Online
               </button>
             )}
             {booking.status === 'completed' && (
@@ -257,6 +305,7 @@ const MyBookings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabFilter>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
+  const [paymentTarget, setPaymentTarget] = useState<Booking | null>(null);
 
   const loadBookings = useCallback(async () => {
     if (!user) {
@@ -357,7 +406,15 @@ const MyBookings: React.FC = () => {
         </div>
 
         {!initialized && (
-          <div className="mb-6 text-center text-gray-600 py-8">Loading…</div>
+          <div className="space-y-6 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+              {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+            </div>
+            <Skeleton className="h-11 rounded-lg w-full mb-6" />
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-40 rounded-xl" />)}
+            </div>
+          </div>
         )}
 
         {initialized && !user && (
@@ -375,7 +432,19 @@ const MyBookings: React.FC = () => {
             )}
 
             {listLoading && (
-              <div className="text-center text-gray-600 py-8 mb-8">Loading bookings…</div>
+              <div className="space-y-6 mb-8">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                  {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                  <Skeleton className="flex-1 h-11 rounded-lg" />
+                  <Skeleton className="w-24 h-11 rounded-lg" />
+                </div>
+                <Skeleton className="h-12 rounded-xl mb-6" />
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-40 rounded-xl" />)}
+                </div>
+              </div>
             )}
 
             {!listLoading && (
@@ -439,7 +508,28 @@ const MyBookings: React.FC = () => {
                 {filtered.length > 0 ? (
                   <div className="space-y-4">
                     {filtered.map(b => (
-                      <BookingCard key={b.id} booking={b} onCancel={handleCancel} />
+                      <BookingCard 
+                        key={b.id} 
+                        booking={b} 
+                        onCancel={handleCancel} 
+                        onPay={(booking) => setPaymentTarget(booking)}
+                        onDownloadReceipt={(booking) => {
+                          generateInvoicePDF({
+                            bookingRef: booking.bookingRef,
+                            parkingLotName: booking.parkingLotName,
+                            parkingLotAddress: booking.parkingLotAddress,
+                            spot: booking.spot,
+                            floor: booking.floor,
+                            vehicleNumber: booking.vehicleNumber,
+                            startTime: booking.startTime,
+                            endTime: booking.endTime,
+                            duration: booking.duration,
+                            totalPrice: booking.totalPrice,
+                            paymentStatus: booking.paymentStatus,
+                            paymentMethod: booking.paymentMethod,
+                          });
+                        }}
+                      />
                     ))}
                   </div>
                 ) : (
@@ -472,6 +562,19 @@ const MyBookings: React.FC = () => {
           booking={cancelTarget}
           onConfirm={confirmCancel}
           onClose={() => setCancelTarget(null)}
+        />
+      )}
+
+      {/* Payment Modal */}
+      {paymentTarget && (
+        <PaymentModal
+          bookingId={paymentTarget.id}
+          amount={paymentTarget.totalPrice}
+          onSuccess={() => {
+            setPaymentTarget(null);
+            void loadBookings();
+          }}
+          onClose={() => setPaymentTarget(null)}
         />
       )}
     </div>

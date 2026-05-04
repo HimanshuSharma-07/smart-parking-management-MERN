@@ -8,34 +8,30 @@ import { ParkingSlots } from "../models/parkingSlots.model"
 import { emitToAdmin } from "../sockets/socket"
 
 const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
-    console.log("Create Lot Request Body:", req.body);
-    console.log("Create Lot Request File:", req.file);
+    
     const { lotName, address, totalFloors, slotsPerFloor, pricePerHour } = req.body
 
     if (!lotName || !address || !totalFloors || !slotsPerFloor || !pricePerHour) {
-        console.log("Validation failed: missing fields", { lotName, address, totalFloors, slotsPerFloor, pricePerHour });
         throw new ApiError(400, "All fields are required")
     }
 
     const parkingLotImgLocalPath = req.file?.path
 
     if (!parkingLotImgLocalPath) {
-        console.log("Validation failed: missing file");
+        
         throw new ApiError(400, "Parking lot image is required")
     }
 
-    console.log("Uploading to Cloudinary...");
     const uploadedParkingLotImg = await uploadOnCloudinary(parkingLotImgLocalPath)
 
     if (!uploadedParkingLotImg?.url) {
-        console.log("Cloudinary upload failed");
+        
         throw new ApiError(500, "Failed to upload parking lot image")
     }
 
     const tFloors = parseInt(totalFloors, 10);
     const sPFloor = parseInt(slotsPerFloor, 10);
 
-    console.log("Calculating slots:", { tFloors, sPFloor, total: tFloors * sPFloor });
 
     const parkingLot = await ParkingLots.create({
         lotName,
@@ -47,8 +43,6 @@ const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
         availableSlots: tFloors * sPFloor,
         pricePerHour: Number(pricePerHour)
     })
-
-    console.log("Parking Lot created in DB:", parkingLot._id);
 
     // Automatically create slots for the parking lot
     const slots = []
@@ -68,7 +62,7 @@ const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
         }
     }
 
-    console.log(`Creating ${slots.length} slots for lot ${parkingLot._id}...`);
+
     await ParkingSlots.insertMany(slots)
 
     const createdparkingLot = await ParkingLots.findById(parkingLot._id)

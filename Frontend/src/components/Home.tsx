@@ -5,18 +5,13 @@ import {
   Calendar,
   Shield,
   Zap,
-  Clock,
   CreditCard,
   Search,
   ArrowRight,
-  Check,
   Star,
   Users,
   TrendingUp,
-  Award,
-  Lock,
   Smartphone,
-  Navigation,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -129,50 +124,6 @@ const Home: React.FC = () => {
         "Living in the city, parking was always a nightmare. Parkify solved that problem. The app is super easy to use!",
       avatar: "ER",
       rating: 5,
-    },
-  ];
-
-  const pricingPlans = [
-    {
-      name: "Pay as You Go",
-      price: "From ₹30/hr",
-      description: "Perfect for occasional parking needs",
-      features: [
-        "Pay only when you park",
-        "No commitment required",
-        "Access to all locations",
-        "Standard support",
-      ],
-      cta: "Get Started",
-      highlighted: false,
-    },
-    {
-      name: "Gold Membership",
-      price: "₹299/month",
-      description: "Best for regular commuters",
-      features: [
-        "Everything in Pay as You Go",
-        "20% discount on all bookings",
-        "Priority customer support",
-        "Free cancellations",
-        "Early access to new locations",
-      ],
-      cta: "Start Free Trial",
-      highlighted: true,
-    },
-    {
-      name: "Business",
-      price: "Custom",
-      description: "For teams and companies",
-      features: [
-        "Everything in Gold",
-        "Dedicated account manager",
-        "Custom billing options",
-        "Team management dashboard",
-        "Volume discounts",
-      ],
-      cta: "Contact Sales",
-      highlighted: false,
     },
   ];
 

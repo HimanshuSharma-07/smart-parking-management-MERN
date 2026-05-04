@@ -16,7 +16,6 @@ app.use(express.static("public"))
 app.use(cookieParser())
 
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
 });
 
@@ -42,7 +41,6 @@ app.use("/api/v1/admin", adminRouter)
 
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.log("SERVER ERROR DETECTED:", err.message || err);
     if (err.stack) console.log(err.stack);
 
     const statusCode = typeof err.statusCode === "number" ? err.statusCode : 500;

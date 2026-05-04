@@ -6,6 +6,7 @@ import {
   Clock, CreditCard, Banknote, CheckCircle2,
   XCircle, AlertCircle, Filter, Download
 } from "lucide-react";
+import { Skeleton } from "../../components/ui/Skeleton";
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   active:    { label: "Active",    color: "bg-blue-50 text-blue-700 border-blue-100" },
@@ -215,9 +216,33 @@ const CustomerRecords = () => {
 
       {/* Table */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-50">
-          <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
-          <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Loading Records</p>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                <tr>
+                  {['Customer', 'Vehicle', 'Parking Spot', 'Entry Time', 'Exit Time', 'Duration', 'Amount', 'Payment', 'Status'].map(h => (
+                    <th key={h} className="px-6 py-4">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <tr key={i}>
+                    <td className="px-6 py-5"><Skeleton className="h-10 w-32" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-6 w-20" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-10 w-24" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-6 w-24" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-6 w-24" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-6 w-16" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-6 w-16" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-10 w-20" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-6 w-20 rounded-full" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">

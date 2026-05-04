@@ -7,14 +7,13 @@ import { ApiResponse } from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
 import { emitToAdmin, emitToLot, emitToUser } from "../sockets/socket";
+import razorpay from "../utils/razorpay";
 
 
 const createBooking = asyncHandler( async (req: Request, res: Response) => {
         
     const { slotId } = req.params
-
     const userId = req.user?._id
-
     const { vehicleNumber, startTime, endTime} = req.body
 
     if (!vehicleNumber || !startTime || !endTime) {
@@ -22,14 +21,17 @@ const createBooking = asyncHandler( async (req: Request, res: Response) => {
     }
 
     const parkingSlot = await ParkingSlots.findById(slotId)
-
     if (!parkingSlot) {
-        throw new ApiError(400, "No available slots")
+        throw new ApiError(404, "Parking slot not found")
+    }
+
+    if (parkingSlot.status !== "available") {
+        throw new ApiError(400, "Parking slot is not available")
     }
 
     const existingBooking = await Booking.findOne({
         slotId: parkingSlot._id,
-        bookingStatus: { $in: ["active", "reserved"] },
+        bookingStatus: { $in: ["active", "reserved", "confirmed"] },
         startTime: { $lt: endTime },
         endTime: { $gt: startTime }
     })
@@ -38,28 +40,46 @@ const createBooking = asyncHandler( async (req: Request, res: Response) => {
          throw new ApiError(409, "Parking slot already booked for this time")
     }
 
+    // Calculate Amount
+    const start = new Date(startTime)
+    const end = new Date(endTime)
+    const durationMs = end.getTime() - start.getTime()
+    const hours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)))
+    const amount = hours * (parkingSlot.pricePerHour || 0)
+
+    // Create Razorpay Order
+    const razorpayOrder = await razorpay.orders.create({
+        amount: Math.round(amount * 100),
+        currency: "INR",
+        receipt: `rcpt_${Date.now()}`
+    })
+
     const booking = await Booking.create({
         userId,
         slotId,
         vehicleNumber,
         startTime,
         endTime,
-        bookingStatus: "reserved"
+        bookingStatus: "reserved" // This acts as "Locked" while waiting for payment
+    })
+
+    // Create Payment record (Pending)
+    await Payment.create({
+        bookingId: booking._id,
+        amount,
+        paymentMethod: "online",
+        paymentStatus: "pending",
+        razorpayOrderId: razorpayOrder.id
     })
 
     parkingSlot.status = "reserved"
     await parkingSlot.save()
 
-    // Decrement available slots in ParkingLot
     const lotId = parkingSlot.lotId?.toString()
     if (lotId) {
         await ParkingLots.findByIdAndUpdate(lotId, {
             $inc: { availableSlots: -1 }
         })
-    }
-
-    // Emit real-time events
-    if (lotId) {
         emitToLot(lotId, "slot:statusUpdate", {
             slotId: parkingSlot._id.toString(),
             status: "reserved",
@@ -71,21 +91,46 @@ const createBooking = asyncHandler( async (req: Request, res: Response) => {
     return res
     .status(200)
     .json(
-        new ApiResponse(201, booking, "Booking Reserved Successfully. Awaiting Vehicle Entry.")
+        new ApiResponse(201, { booking, razorpayOrder, key: process.env.RAZORPAY_KEY_ID }, "Booking initiated. Please complete payment to confirm.")
     )
 
 })
 
 const getUserBooking = asyncHandler( async (req: Request, res: Response) => {
 
-    const userBookings = await Booking.find({
-        userId: req.user?._id,
-    })
-        .populate({
-            path: "slotId",
-            populate: { path: "lotId", model: "ParkingLots" },
-        })
-        .sort({ createdAt: -1 })
+    const userId = req.user?._id;
+
+    const userBookings = await Booking.aggregate([
+        { $match: { userId: userId } },
+        {
+            $lookup: {
+                from: "parkingslots",
+                localField: "slotId",
+                foreignField: "_id",
+                as: "slotId"
+            }
+        },
+        { $unwind: { path: "$slotId", preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: {
+                from: "parkinglots",
+                localField: "slotId.lotId",
+                foreignField: "_id",
+                as: "slotId.lotId"
+            }
+        },
+        { $unwind: { path: "$slotId.lotId", preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: {
+                from: "payments",
+                localField: "_id",
+                foreignField: "bookingId",
+                as: "payment"
+            }
+        },
+        { $unwind: { path: "$payment", preserveNullAndEmptyArrays: true } },
+        { $sort: { createdAt: -1 } }
+    ]);
 
     return res
     .status(200)
@@ -156,9 +201,13 @@ const compeleteBooking = asyncHandler(async (req: Request, res: Response) => {
         })
     }
     emitToAdmin("booking:completed", { bookingId, lotId, slotId: parkingSlot._id.toString() })
-    if (paymentMethod === "cash") {
-        emitToAdmin("payment:created", { bookingId, amount: totalPrice, method: "cash" })
-    }
+    
+    emitToAdmin("payment:created", { 
+        bookingId, 
+        amount: totalPrice, 
+        method: paymentMethod,
+        status: paymentMethod === "cash" ? "paid" : "pending" 
+    })
     
     // Notification for the user
     if (userBooking.userId) {
@@ -185,7 +234,7 @@ const markVehicleEntry = asyncHandler(async (req: Request, res: Response) => {
         throw new ApiError(404, "Booking not found")
     }
 
-    if (booking.bookingStatus !== "reserved") {
+    if (booking.bookingStatus !== "reserved" && booking.bookingStatus !== "confirmed") {
         throw new ApiError(400, `Cannot mark entry for booking with status: ${booking.bookingStatus}`)
     }
 
@@ -283,10 +332,10 @@ const searchBookingByVehicle = asyncHandler(async (req: Request, res: Response) 
         throw new ApiError(400, "Vehicle number is required");
     }
 
-    // Find the most recent active or reserved booking for this vehicle
+    // Find the most recent active, reserved, or confirmed booking for this vehicle
     const booking = await Booking.findOne({
         vehicleNumber: { $regex: new RegExp(`^${vehicleNumber}$`, "i") },
-        bookingStatus: { $in: ["active", "reserved"] }
+        bookingStatus: { $in: ["active", "reserved", "confirmed"] }
     })
     .populate({
         path: "slotId",

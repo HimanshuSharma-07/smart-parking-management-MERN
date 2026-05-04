@@ -5,8 +5,8 @@ export interface IPayment extends Document{
     amount: number;
     paymentMethod: "online" | "cash";
     paymentStatus: "pending" | "paid" | "failed";
-    razerpayOrderId: string;
-    razerpayPaymentId: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
     paidAt?: Date;
 
 }
@@ -35,10 +35,10 @@ const paymentSchema = new Schema<IPayment>(
             default: "pending",
             index: true
         },
-        razerpayOrderId:{
+        razorpayOrderId:{
             type: String
         },
-        razerpayPaymentId: {
+        razorpayPaymentId: {
             type: String,
         },
         paidAt: {

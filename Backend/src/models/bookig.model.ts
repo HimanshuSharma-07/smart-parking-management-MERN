@@ -6,7 +6,7 @@ export interface IBooking extends Document{
     vehicleNumber: string;
     startTime: Date;
     endTime: Date;
-    bookingStatus: "active" | "reserved" | "completed" | "cancelled"
+    bookingStatus: "active" | "reserved" | "confirmed" | "completed" | "cancelled"
 
 }
 
@@ -37,7 +37,7 @@ const bookingSchema = new Schema<IBooking>(
         bookingStatus: {
             type: String,
             required: true,
-            enum: ["active", "reserved", "completed", "cancelled"],
+            enum: ["active", "reserved", "confirmed", "completed", "cancelled"],
             default: "reserved"
         }
 

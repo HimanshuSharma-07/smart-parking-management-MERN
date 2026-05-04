@@ -32,7 +32,7 @@ const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
 
   // Calculate total revenue from successful payments
   const paymentFilter: any = {
-    paymentStatus: { $in: ["successful", "completed"] },
+    paymentStatus: "paid",
   };
   if (dateFilter.createdAt) paymentFilter.createdAt = dateFilter.createdAt;
 
@@ -233,7 +233,7 @@ const getAllPayments = asyncHandler(async (req: Request, res: Response) => {
         amount: 1,
         paymentMethod: 1,
         paymentStatus: 1,
-        razerpayPaymentId: 1,
+        razorpayPaymentId: 1,
         paidAt: 1,
         createdAt: 1,
         "user.fullName": 1,
