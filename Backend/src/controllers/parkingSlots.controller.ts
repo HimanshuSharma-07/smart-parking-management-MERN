@@ -1,6 +1,6 @@
 import { ParkingLots } from "../models/parkingLot.model";
 import { ParkingSlots } from "../models/parkingSlots.model";
-import { Booking } from "../models/bookig.model";
+import { Booking } from "../models/booking.model";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";

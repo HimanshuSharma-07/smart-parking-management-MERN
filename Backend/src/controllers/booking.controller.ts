@@ -1,4 +1,4 @@
-import { Booking } from "../models/bookig.model";
+import { Booking } from "../models/booking.model";
 import { ParkingLots } from "../models/parkingLot.model";
 import { ParkingSlots } from "../models/parkingSlots.model";
 import { Payment } from "../models/payment.model";
@@ -8,6 +8,8 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
 import { emitToAdmin, emitToLot, emitToUser } from "../sockets/socket";
 import razorpay from "../utils/razorpay";
+import { User } from "../models/user.model";
+import { sendInvoiceEmail } from "../utils/email.service";
 
 
 const createBooking = asyncHandler( async (req: Request, res: Response) => {
@@ -139,7 +141,7 @@ const getUserBooking = asyncHandler( async (req: Request, res: Response) => {
     )
 })
 
-const compeleteBooking = asyncHandler(async (req: Request, res: Response) => {
+const completeBooking = asyncHandler(async (req: Request, res: Response) => {
     
     const { bookingId } = req.params
 
@@ -219,6 +221,21 @@ const compeleteBooking = asyncHandler(async (req: Request, res: Response) => {
             totalPrice,
             paymentMethod
         })
+
+        // Send Final Bill Email
+        const user = await User.findById(userBooking.userId);
+        const lot = await ParkingLots.findById(parkingSlot.lotId);
+        
+        if (user && user.email) {
+            await sendInvoiceEmail(user.email, {
+                vehicleNumber: userBooking.vehicleNumber,
+                slotNumber: parkingSlot.slotNumber,
+                lotName: lot?.lotName || "Parking Lot",
+                startTime: userBooking.startTime,
+                endTime: userBooking.endTime,
+                amount: totalPrice
+            });
+        }
     }
 
     return res.status(200).json(
@@ -352,11 +369,61 @@ const searchBookingByVehicle = asyncHandler(async (req: Request, res: Response) 
     );
 });
 
+const cleanupExpiredBookings = async () => {
+    try {
+        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+        // Find bookings that are 'reserved' and older than 15 minutes
+        const expiredBookings = await Booking.find({
+            bookingStatus: "reserved",
+            createdAt: { $lt: fifteenMinutesAgo }
+        });
+
+        if (expiredBookings.length === 0) return;
+
+        console.log(`[Cleanup] Found ${expiredBookings.length} expired reservations. Cleaning up...`);
+
+        for (const booking of expiredBookings) {
+            // Update booking status to cancelled
+            booking.bookingStatus = "cancelled";
+            await booking.save();
+
+            // Update slot status to available
+            const slot = await ParkingSlots.findById(booking.slotId);
+            if (slot) {
+                if (slot.status === "reserved" || slot.status === "occupied") {
+                    slot.status = "available";
+                    await slot.save();
+
+                    // Increment available slots in ParkingLot
+                    await ParkingLots.findByIdAndUpdate(slot.lotId, {
+                        $inc: { availableSlots: 1 }
+                    });
+
+                    // Emit real-time update
+                    const lotId = slot.lotId?.toString();
+                    if (lotId) {
+                        emitToLot(lotId, "slot:statusUpdate", {
+                            slotId: slot._id.toString(),
+                            status: "available",
+                            lotId,
+                        });
+                    }
+                }
+            }
+        }
+        console.log(`[Cleanup] Successfully cleaned up ${expiredBookings.length} bookings.`);
+    } catch (error) {
+        console.error("[Cleanup] Error during expired bookings cleanup:", error);
+    }
+};
+
 export {
     createBooking,
     getUserBooking,
-    compeleteBooking,
+    completeBooking,
     cancelBooking,
     markVehicleEntry,
-    searchBookingByVehicle
+    searchBookingByVehicle,
+    cleanupExpiredBookings
 }

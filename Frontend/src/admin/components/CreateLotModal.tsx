@@ -88,7 +88,7 @@ export default function CreateLotModal({ isOpen, onClose, onSuccess }: CreateLot
                   <Dialog.Title as="h3" className="text-lg font-bold leading-6 text-gray-900">
                     Add Parking Lot
                   </Dialog.Title>
-                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500 cursor-pointer">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -169,14 +169,14 @@ export default function CreateLotModal({ isOpen, onClose, onSuccess }: CreateLot
                     <button
                       type="button"
                       onClick={onClose}
-                      className="flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                      className="flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={loading}
-                      className="flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 transition-colors disabled:opacity-50"
+                      className="flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {loading ? 'Creating...' : 'Create Lot'}
                     </button>

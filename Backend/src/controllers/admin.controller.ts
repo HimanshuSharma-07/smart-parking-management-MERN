@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
 import { ApiResponse } from "../utils/ApiResponse";
 import { User } from "../models/user.model";
-import { Booking } from "../models/bookig.model";
+import { Booking } from "../models/booking.model";
 import { Payment } from "../models/payment.model";
 import { ParkingSlots } from "../models/parkingSlots.model";
 import { ParkingLots } from "../models/parkingLot.model";

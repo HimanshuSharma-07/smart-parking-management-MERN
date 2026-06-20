@@ -3,7 +3,7 @@ import { LayoutDashboard, Grid, CalendarDays, CreditCard, Users } from "lucide-r
 
 const Sidebar = () => {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 p-3 rounded-lg transition-colors text-sm font-medium ${
+    `flex items-center gap-3 p-3 rounded-lg transition-colors text-sm font-medium cursor-pointer ${
       isActive
         ? "bg-gray-100 text-gray-900"
         : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"

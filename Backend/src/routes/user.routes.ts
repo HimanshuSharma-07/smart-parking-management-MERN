@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser, loginUser, logoutUser, refreshAccessToken, updateAccountDetails, getCurrentUser, updateUserProfileImg } from "../controllers/user.controller";
+import { registerUser, loginUser, googleLogin, logoutUser, refreshAccessToken, updateAccountDetails, getCurrentUser, updateUserProfileImg } from "../controllers/user.controller";
 import { upload } from "../middlewares/multer.middleware";
 import { verifyJWT } from "../middlewares/auth.middleware";
 
@@ -18,6 +18,7 @@ router.route("/register").post(
 )
 
 router.route("/login").post(loginUser)
+router.route("/google-login").post(googleLogin)
 
 //secured routes
 router.route("/logout").post(verifyJWT ,logoutUser)

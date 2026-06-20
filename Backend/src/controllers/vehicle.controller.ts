@@ -1,10 +1,13 @@
-import { Booking } from "../models/bookig.model";
+import { Booking } from "../models/booking.model";
 import { ParkingSlots } from "../models/parkingSlots.model";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
 import { emitToLot, emitToAdmin } from "../sockets/socket";
+import { User } from "../models/user.model";
+import { ParkingLots } from "../models/parkingLot.model";
+import { sendInvoiceEmail } from "../utils/email.service";
 
 
 
@@ -103,6 +106,21 @@ const vehicleExit = asyncHandler(async (req: Request, res: Response) => {
         })
     }
     emitToAdmin("booking:completed", { bookingId, lotId, slotId: slot._id.toString() })
+
+    // Send Final Bill Email
+    const user = await User.findById(booking.userId);
+    const lot = await ParkingLots.findById(slot.lotId);
+
+    if (user && user.email) {
+        await sendInvoiceEmail(user.email, {
+            vehicleNumber: booking.vehicleNumber,
+            slotNumber: slot.slotNumber,
+            lotName: lot?.lotName || "Parking Lot",
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            amount: totalPrice
+        });
+    }
 
     return res.status(200).json(
         new ApiResponse(

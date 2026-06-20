@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
-import { Booking } from "../models/bookig.model";
+import { Booking } from "../models/booking.model";
 import { Payment } from "../models/payment.model";
 import { ParkingSlots } from "../models/parkingSlots.model";
 import razorpay from "../utils/razorpay";
@@ -136,11 +136,11 @@ const verifyPayment = asyncHandler(async (req: Request, res: Response) => {
             }
         }
 
-        // Send Invoice Email
+        // Send Invoice Email - only if not already sent
         const user = await User.findById(booking.userId);
         const lot = await ParkingLots.findById(slot.lotId);
 
-        if (user && user.email) {
+        if (user && user.email && !payment.invoiceSent) {
             await sendInvoiceEmail(user.email, {
                 vehicleNumber: booking.vehicleNumber,
                 slotNumber: slot.slotNumber,
@@ -149,6 +149,26 @@ const verifyPayment = asyncHandler(async (req: Request, res: Response) => {
                 endTime: booking.endTime,
                 amount: payment.amount
             });
+            payment.invoiceSent = true;
+            await payment.save();
+        }
+    } else if (booking && booking.bookingStatus === "confirmed" && !payment.invoiceSent) {
+        // Case where webhook might have finished first, but email wasn't sent or we want to be sure
+        const user = await User.findById(booking.userId);
+        const slot: any = booking.slotId;
+        const lot = await ParkingLots.findById(slot?.lotId);
+
+        if (user && user.email) {
+            await sendInvoiceEmail(user.email, {
+                vehicleNumber: booking.vehicleNumber,
+                slotNumber: slot?.slotNumber,
+                lotName: lot?.lotName || "Parking Lot",
+                startTime: booking.startTime,
+                endTime: booking.endTime,
+                amount: payment.amount
+            });
+            payment.invoiceSent = true;
+            await payment.save();
         }
     }
 
@@ -223,7 +243,7 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
                 const user = await User.findById(booking.userId);
                 const lot = await ParkingLots.findById(slot.lotId);
 
-                if (user && user.email) {
+                if (user && user.email && !payment.invoiceSent) {
                     await sendInvoiceEmail(user.email, {
                         vehicleNumber: booking.vehicleNumber,
                         slotNumber: slot.slotNumber,
@@ -232,6 +252,25 @@ const handleWebhook = asyncHandler(async (req: Request, res: Response) => {
                         endTime: booking.endTime,
                         amount: payment.amount
                     });
+                    payment.invoiceSent = true;
+                    await payment.save();
+                }
+            } else if (booking && booking.bookingStatus === "confirmed" && !payment.invoiceSent) {
+                const user = await User.findById(booking.userId);
+                const slot: any = booking.slotId;
+                const lot = await ParkingLots.findById(slot?.lotId);
+
+                if (user && user.email) {
+                    await sendInvoiceEmail(user.email, {
+                        vehicleNumber: booking.vehicleNumber,
+                        slotNumber: slot?.slotNumber,
+                        lotName: lot?.lotName || "Parking Lot",
+                        startTime: booking.startTime,
+                        endTime: booking.endTime,
+                        amount: payment.amount
+                    });
+                    payment.invoiceSent = true;
+                    await payment.save();
                 }
             }
         }

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { loginUser, clearAuthError } from '../store/authSlice';
+import { loginUser, clearAuthError, googleLogin } from '../store/authSlice';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
   const dispatch = useAppDispatch();
@@ -17,6 +18,14 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
+  const handleLoginSuccess = (user: { role?: string }) => {
+    if (user.role === 'admin' && from === '/parking-lots') {
+      navigate('/admin', { replace: true });
+    } else {
+      navigate(from, { replace: true });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
@@ -29,15 +38,21 @@ export default function Login() {
 
     try {
       const loggedInUser = await dispatch(loginUser({ email: email.trim(), password })).unwrap();
-      if (loggedInUser.role === 'admin' && from === '/parking-lots') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate(from, { replace: true });
-      }
+      handleLoginSuccess(loggedInUser);
     } catch {
       /* error surfaced via auth slice or unwrap rejection */
     }
   };
+
+  const onGoogleSuccess = async (response: any) => {
+    try {
+      const user = await dispatch(googleLogin(response.credential)).unwrap();
+      handleLoginSuccess(user);
+    } catch {
+      /* error surfaced via auth slice */
+    }
+  };
+
 
   const displayError = localError ?? authError;
 
@@ -95,6 +110,25 @@ export default function Login() {
             {authBusy ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or continue with</span>
+          </div>
+        </div>
+
+        <div className="flex justify-center">
+          <GoogleLogin
+            onSuccess={onGoogleSuccess}
+            onError={() => dispatch(clearAuthError())}
+            theme="outline"
+            size="large"
+            width="100%"
+          />
+        </div>
 
         <p className="mt-6 text-center text-sm text-gray-600">
           No account?{' '}

@@ -6,6 +6,9 @@ import { uploadOnCloudinary } from "../utils/cloudinary"
 import { ApiResponse } from "../utils/ApiResponse"
 import { Types } from "mongoose"
 import jwt, { JwtPayload } from "jsonwebtoken"
+import { OAuth2Client } from "google-auth-library"
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 declare global {
     namespace Express {
@@ -312,7 +315,78 @@ const updateUserProfileImg = asyncHandler ( async (req: Request, res: Response) 
 
 })
 
+const googleLogin = asyncHandler(async (req: Request, res: Response) => {
+    const { credential } = req.body
 
+    if (!credential) {
+        throw new ApiError(400, "Google credential is required")
+    }
+
+    try {
+        const ticket = await client.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID
+        })
+
+        const payload = ticket.getPayload()
+        if (!payload) {
+            throw new ApiError(400, "Invalid Google token payload")
+        }
+
+        const { sub: googleId, email, name: fullName, picture: profileImg } = payload
+
+        if (!email) {
+            throw new ApiError(400, "Email not found in Google account")
+        }
+
+        let user = await User.findOne({ email })
+
+        if (user) {
+            // If user exists but doesn't have googleId, update it
+            if (!user.googleId) {
+                user.googleId = googleId
+                if (profileImg && !user.profileImg) {
+                    user.profileImg = profileImg
+                }
+                await user.save({ validateBeforeSave: false })
+            }
+        } else {
+            // Create new user
+            user = await User.create({
+                fullName: fullName || "Google User",
+                email,
+                googleId,
+                profileImg: profileImg || "",
+                role: "user"
+            })
+        }
+
+        const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
+
+        const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+
+        return res
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json(
+                new ApiResponse(
+                    200,
+                    {
+                        user: loggedInUser, accessToken, refreshToken
+                    },
+                    "User logged in with Google successfully"
+                )
+            )
+    } catch (error: any) {
+        throw new ApiError(401, error.message || "Google authentication failed")
+    }
+})
 
 export {
     registerUser,
@@ -323,5 +397,6 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserProfileImg,
+    googleLogin,
 
 }

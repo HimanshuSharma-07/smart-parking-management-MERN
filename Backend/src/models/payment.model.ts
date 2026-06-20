@@ -8,7 +8,7 @@ export interface IPayment extends Document{
     razorpayOrderId: string;
     razorpayPaymentId: string;
     paidAt?: Date;
-
+    invoiceSent: boolean;
 }
 
 const paymentSchema = new Schema<IPayment>( 
@@ -44,6 +44,10 @@ const paymentSchema = new Schema<IPayment>(
         paidAt: {
             type: Date
         },
+        invoiceSent: {
+            type: Boolean,
+            default: false
+        }
 
     }, {timestamps: true}
 );

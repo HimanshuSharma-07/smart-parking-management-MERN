@@ -7,10 +7,11 @@ import bcrypt from "bcrypt"
 export interface IUser extends Document {
     fullName: string;
     email: string;
-    password: string;
+    password?: string;
     phoneNo?: string;
     profileImg?: string;
     role: "user" | "admin";
+    googleId?: string;
     refreshToken?: string;
     isPasswordCorrect(password: string): boolean;
     generateAccessToken(): string;
@@ -34,11 +35,16 @@ const userSchema = new Schema<IUser>  (
         },
         phoneNo: {
             type: String,
-            required: true
+            required: false
         },
         password: {
             type: String,
-            required: [true, "Password is required"]
+            required: false
+        },
+        googleId: {
+            type: String,
+            unique: true,
+            sparse: true
         },
         profileImg: {
             type: String,
@@ -57,12 +63,13 @@ const userSchema = new Schema<IUser>  (
 )
 
 userSchema.pre("save", async function () {
-    if(!this.isModified("password")) return
+    if(!this.isModified("password") || !this.password) return
 
     this.password = await bcrypt.hash(this.password, 10);
 })
 
 userSchema.methods.isPasswordCorrect = async function (password: string) {
+    if (!this.password) return false;
     return await bcrypt.compare(password, this.password) 
 };
 
