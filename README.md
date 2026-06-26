@@ -86,11 +86,7 @@ GET /api/parking-lots/:id
 
 # 🚀 Future Improvements
 
-* Online Parking Slot Booking
-* Payment Gateway Integration
 * QR Code Parking Entry
-* Real-Time Parking Status
-* Admin Analytics Dashboard
 
 ---
 
