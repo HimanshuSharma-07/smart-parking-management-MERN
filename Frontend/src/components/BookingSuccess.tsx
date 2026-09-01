@@ -49,7 +49,7 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ isOpen, onClose, bookin
       <div className="bg-white rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col shadow-2xl shadow-slate-900/40 border border-slate-100 overflow-hidden">
 
         {/* Header */}
-        <div className="bg-liner-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative text-center shrink-0">
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative text-center shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -63,7 +63,7 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ isOpen, onClose, bookin
             <div className="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mb-4 border border-emerald-500/30 text-emerald-400 ring-4 ring-emerald-500/10">
               <CheckCircle className="w-9 h-9" />
             </div>
-            <h2 className="text-2xl font-black text-white tracking-tight">Booking Confirmed!</h2>
+            <h2 className="text-2xl font-bold text-white tracking-tight">Booking Confirmed!</h2>
             <p className="text-slate-400 text-xs mt-1 font-medium">Your parking spot has been successfully reserved</p>
           </div>
         </div>

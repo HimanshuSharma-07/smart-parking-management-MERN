@@ -542,10 +542,10 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1000 p-4">
         <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl">
-          <div className="bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative shrink-0 rounded-t-2xl">
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative shrink-0 rounded-t-2xl">
             <div>
               <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-black tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
                   {bookingStep === 1 ? 'Step 1: Select Spot' : 'Step 2: Booking Details'} — {parkingLotName}
                 </h2>
                 {user?.role === 'admin' && (
@@ -1038,7 +1038,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
           <div className="bg-white rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col shadow-2xl shadow-slate-900/30 border border-slate-100 overflow-hidden">
 
             {/* Dark Header */}
-            <div className="bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative text-center shrink-0">
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative text-center shrink-0">
               <button
                 type="button"
                 onClick={() => setShowConfirmDialog(false)}
@@ -1052,7 +1052,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                 <div className="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mb-4 border border-emerald-500/30 text-emerald-400 ring-4 ring-emerald-500/10">
                   <CheckCircle className="w-9 h-9" />
                 </div>
-                <h2 className="text-2xl font-black text-white tracking-tight">Confirm your booking</h2>
+                <h2 className="text-2xl font-bold text-white tracking-tight">Confirm your booking</h2>
                 <p className="text-slate-400 text-xs mt-1 font-medium">Please review before confirming.</p>
               </div>
             </div>
