@@ -184,40 +184,51 @@ const Dashboard = () => {
             {/* Network Utilization Card */}
             <div className="lg:col-span-2 space-y-8">
               <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden group h-full">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 tracking-tight">System Utilization</h3>
-                    <p className="text-xs font-medium text-gray-500 mt-0.5">Real-time slot occupancy across the network</p>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <div className="text-2xl font-bold text-gray-900 leading-none">
-                      {((stats.bookings / stats.slots) * 100 || 0).toFixed(1)}%
-                    </div>
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Occupancy</span>
-                  </div>
-                </div>
-                
-                <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden border border-gray-50">
-                  <div 
-                    className="absolute top-0 left-0 h-full bg-emerald-500 transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-                    style={{ width: `${(stats.bookings / stats.slots) * 100 || 0}%` }}
-                  />
-                </div>
+                {(() => {
+                  const total = stats.slots || 0;
+                  const occupied = stats.bookings || 0;
+                  const available = Math.max(0, total - occupied);
+                  const occupancy = total > 0 ? Math.min(100, (occupied / total) * 100) : 0;
 
-                <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t border-gray-50">
-                   <div className="text-center">
-                      <div className="text-lg font-bold text-gray-900">{stats.slots || 0}</div>
-                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Total Nodes</div>
-                   </div>
-                   <div className="text-center">
-                      <div className="text-lg font-bold text-emerald-600">{ (stats.slots - stats.bookings) || 0}</div>
-                      <div className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mt-1">Available</div>
-                   </div>
-                   <div className="text-center">
-                      <div className="text-lg font-bold text-indigo-600">{stats.bookings || 0}</div>
-                      <div className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mt-1">Occupied</div>
-                   </div>
-                </div>
+                  return (
+                    <>
+                      <div className="flex items-center justify-between mb-8">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900 tracking-tight">System Utilization</h3>
+                          <p className="text-xs font-medium text-gray-500 mt-0.5">Real-time slot occupancy across the network</p>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <div className="text-2xl font-bold text-gray-900 leading-none">
+                            {occupancy.toFixed(1)}%
+                          </div>
+                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Occupancy</span>
+                        </div>
+                      </div>
+                      
+                      <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden border border-gray-50">
+                        <div 
+                          className="absolute top-0 left-0 h-full bg-emerald-500 transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                          style={{ width: `${occupancy}%` }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t border-gray-50">
+                         <div className="text-center">
+                            <div className="text-lg font-bold text-gray-900">{total}</div>
+                            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Total Nodes</div>
+                         </div>
+                         <div className="text-center">
+                            <div className="text-lg font-bold text-emerald-600">{available}</div>
+                            <div className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mt-1">Available</div>
+                         </div>
+                         <div className="text-center">
+                            <div className="text-lg font-bold text-indigo-600">{occupied}</div>
+                            <div className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mt-1">Occupied</div>
+                         </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Car, Zap, ChevronRight, AlertCircle, CheckCircle, MapPin, Plus, Layers, Trash2 } from 'lucide-react';
+import { X, Car, Zap, ChevronRight, AlertCircle, CheckCircle, MapPin, Plus, Layers, Trash2, Loader2, RotateCcw } from 'lucide-react';
 import axios from 'axios';
 import api from '../services/api';
 import type { BackendParkingSlot } from '../services/parking';
@@ -150,6 +150,66 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
 
   // Admin states
   const user = useAppSelector(s => s.auth.user);
+
+  /**
+   * Formats Indian vehicle numbers dynamically as the user types (e.g., PB 12 AA 1212)
+   */
+  const formatVehicleNumber = (val: string): string => {
+    const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    let formatted = '';
+    if (clean.length > 0) formatted += clean.substring(0, 2);
+    if (clean.length > 2) formatted += ' ' + clean.substring(2, 4);
+    if (clean.length > 4) {
+      const rest = clean.substring(4);
+      const seriesMatch = rest.match(/^[A-Z]{1,2}/);
+      if (seriesMatch) {
+        formatted += ' ' + seriesMatch[0];
+        const numbers = rest.substring(seriesMatch[0].length);
+        if (numbers) formatted += ' ' + numbers.substring(0, 4);
+      } else {
+        const numbersMatch = rest.match(/^[0-9]{1,4}/);
+        if (numbersMatch) formatted += ' ' + numbersMatch[0];
+      }
+    }
+    return formatted;
+  };
+
+  /**
+   * Extracts the numeric portion of an Indian vehicle registration string.
+   * Example: "PB 23 AA 1212" → "1212"
+   */
+  const parseVehicleNumber = (v: string): string => {
+    const match = v.match(/(\d{1,4})$/);
+    return match ? match[1] : '';
+  };
+
+  // Auto‑detect and select a spot based on vehicle number when user finishes typing.
+  const handleVehicleNumberBlur = () => {
+    if (!vehicleNumber || bookingStep !== 2) return;
+    
+    const numeric = parseVehicleNumber(vehicleNumber);
+    if (!numeric) return;
+    
+    // Normalise spot labels (remove non‑alphanumeric characters and uppercase).
+    const normalizeLabel = (label: string) => label.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    // Use the last two digits of the vehicle number for matching (common in Indian plates).
+    const matchDigits = numeric.slice(-2);
+    
+    // Search for a matching available spot.
+    for (const floor of floorsData) {
+      for (const rowName of Object.keys(floor.rows)) {
+        const spot = floor.rows[rowName].find(s => {
+          const norm = normalizeLabel(s.label);
+          return norm.endsWith(matchDigits) && s.status === 'available';
+        });
+        if (spot && spot.id !== selectedSpot?.id) {
+          setSelectedSpot(spot);
+          setSelectedFloor(floor.floor);
+          return;
+        }
+      }
+    }
+  };
   const [isAddSlotsModalOpen, setIsAddSlotsModalOpen] = useState(false);
   const [isSingleSlotModalOpen, setIsSingleSlotModalOpen] = useState(false);
   
@@ -158,6 +218,12 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
   const [adminEditPrice, setAdminEditPrice] = useState('');
   const [adminSaving, setAdminSaving] = useState(false);
   const [adminError, setAdminError] = useState('');
+
+  const cancelBookingProcess = () => {
+    setShowConfirmDialog(false);
+    setSubmitting(false);
+    setBookingError(null);
+  };
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDeleteLotConfirm, setShowDeleteLotConfirm] = useState(false);
   const [showDeleteFloorConfirm, setShowDeleteFloorConfirm] = useState(false);
@@ -229,11 +295,11 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
   const currentFloorData = floorsData.find(f => f.floor === selectedFloor);
 
   const getSpotColor = (spot: ParkingSpot): string => {
-    if (spot.id === selectedSpot?.id) return 'bg-blue-600 text-white border-blue-700 shadow-lg';
+    if (spot.id === selectedSpot?.id) return 'bg-green-600 text-white border-green-700 shadow-lg';
 
     switch (spot.status) {
       case 'available':
-        return 'bg-gray-50 text-gray-700 border-gray-200 hover:border-blue-300 hover:shadow-sm cursor-pointer';
+        return 'bg-gray-50 text-gray-700 border-gray-200 hover:border-green-300 hover:shadow-sm cursor-pointer';
       case 'occupied':
         return user?.role === 'admin' 
           ? 'bg-red-50 text-red-700 border-red-200 cursor-pointer hover:border-red-400 opacity-90' 
@@ -354,6 +420,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
             onClose();
           } catch (err: any) {
             setBookingError(err.response?.data?.message || 'Payment verification failed');
+            setSubmitting(false);
           }
         },
         prefill: {
@@ -473,12 +540,12 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
 
   const modal = (
     <>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1000 p-4">
         <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl">
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 shrink-0">
+          <div className="bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative shrink-0 rounded-t-2xl">
             <div>
               <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-2xl font-black tracking-tight">
                   {bookingStep === 1 ? 'Step 1: Select Spot' : 'Step 2: Booking Details'} — {parkingLotName}
                 </h2>
                 {user?.role === 'admin' && (
@@ -486,7 +553,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsSingleSlotModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-700 border border-gray-300 px-3 py-1.5 rounded text-xs font-semibold hover:bg-gray-200 transition-colors shadow-sm"
+                      className="inline-flex items-center gap-1.5 bg-white/10 text-white border border-white/20 px-3 py-1.5 rounded text-xs font-semibold hover:bg-white/20 transition-colors shadow-sm"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       Add Single Slot
@@ -494,7 +561,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsAddSlotsModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-gray-800 transition-colors shadow-sm"
+                      className="inline-flex items-center gap-1.5 bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-semibold hover:bg-emerald-600 border border-emerald-400/50 transition-colors shadow-sm"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       Bulk Add Slots
@@ -502,7 +569,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowDeleteLotConfirm(true)}
-                      className="inline-flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-100 transition-colors shadow-sm"
+                      className="inline-flex items-center gap-1.5 bg-red-500/20 text-red-200 border border-red-500/30 px-3 py-1.5 rounded text-xs font-semibold hover:bg-red-500/30 transition-colors shadow-sm"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       Delete Lot
@@ -510,14 +577,14 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                   </div>
                 )}
               </div>
-              <p className="text-sm text-gray-600 mt-1">{parkingLotAddress}</p>
+              <p className="text-sm text-slate-400 mt-1.5 font-medium">{parkingLotAddress}</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
             >
-              <X className="w-6 h-6 text-gray-600" />
+              <X className="w-6 h-6" />
             </button>
           </div>
 
@@ -578,7 +645,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                 {bookingStep === 1 ? (
                   <>
                     <div className="mb-8">
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <Layers className="w-4 h-4" />
                         Select floor
                       </label>
@@ -635,7 +702,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-600 border border-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+                          <div className="w-10 h-10 bg-green-600 border border-green-700 rounded-xl flex items-center justify-center shadow-lg">
                             <Car className="w-5 h-5 text-white" />
                           </div>
                           <div>
@@ -792,16 +859,16 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                 ) : (
                   selectedSpot && (
                     <>
-                      <div className="mb-6 p-6 bg-blue-50/60 border border-blue-100 border-l-[5px] border-l-blue-600 rounded-2xl">
+                      <div className="mb-6 p-6 bg-green-50/60 border border-green-100 border-l-[5px] border-l-green-600 rounded-2xl">
                         <div className="flex items-center justify-between mb-5">
-                          <h3 className="text-[11px] font-black text-blue-600 uppercase tracking-[0.25em]">Selected Spot</h3>
+                          <h3 className="text-[11px] font-black text-green-600 uppercase tracking-[0.25em]">Selected Spot</h3>
                           <button
                             type="button"
                             onClick={() => {
                               setSelectedSpot(null);
                               setBookingStep(1);
                             }}
-                            className="text-[11px] text-blue-600 font-bold hover:underline uppercase tracking-[0.15em]"
+                            className="text-[11px] text-green-600 font-bold hover:underline uppercase tracking-[0.15em]"
                           >
                             Change Spot
                           </button>
@@ -813,7 +880,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                           </div>
                           <div>
                             <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black block mb-1">Type</span>
-                            <div className="font-bold text-blue-600 capitalize text-2xl">{selectedSpot.type ?? 'Regular'}</div>
+                            <div className="font-bold text-green-600 capitalize text-2xl">{selectedSpot.type ?? 'Regular'}</div>
                           </div>
                           <div>
                             <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black block mb-1">Floor</span>
@@ -839,8 +906,9 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                             <input
                               type="text"
                               value={vehicleNumber}
+                              onBlur={handleVehicleNumberBlur}
                               onChange={e => {
-                                setVehicleNumber(e.target.value);
+                                setVehicleNumber(formatVehicleNumber(e.target.value));
                                 if (errors.vehicleNumber) setErrors(prev => ({ ...prev, vehicleNumber: undefined }));
                               }}
                               placeholder="e.g. MH-01-AB-1234"
@@ -954,7 +1022,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                   <button
                     type="button"
                     onClick={handleConfirmBooking}
-                    className="w-full md:w-auto px-10 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all active:scale-95 shadow-xl shadow-blue-100 flex items-center justify-center gap-3 uppercase text-[10px] tracking-widest"
+                    className="w-full md:w-auto px-10 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all active:scale-95 shadow-xl shadow-green-100 flex items-center justify-center gap-3 uppercase text-[10px] tracking-widest"
                   >
                     Confirm booking
                     <CheckCircle className="w-4 h-4" />
@@ -966,72 +1034,127 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
       </div>
 
       {showConfirmDialog && selectedSpot && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1100] p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-gray-900 px-6 py-5 text-white">
-              <div className="flex items-center gap-3 mb-1">
-                <CheckCircle className="w-6 h-6 text-green-400" />
-                <h3 className="text-lg font-bold">Confirm your booking</h3>
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex items-center justify-center z-1100 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col shadow-2xl shadow-slate-900/30 border border-slate-100 overflow-hidden">
+
+            {/* Dark Header */}
+            <div className="bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative text-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowConfirmDialog(false)}
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                title="Close dialog"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mb-4 border border-emerald-500/30 text-emerald-400 ring-4 ring-emerald-500/10">
+                  <CheckCircle className="w-9 h-9" />
+                </div>
+                <h2 className="text-2xl font-black text-white tracking-tight">Confirm your booking</h2>
+                <p className="text-slate-400 text-xs mt-1 font-medium">Please review before confirming.</p>
               </div>
-              <p className="text-gray-400 text-sm">Please review before confirming.</p>
             </div>
 
-            <div className="px-6 py-5 space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                <MapPin className="w-5 h-5 text-blue-600 shrink-0" />
+            {/* Scrollable body */}
+            <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+              {bookingError && (
+                <div className="p-3.5 bg-red-50 border border-red-200/80 rounded-2xl flex items-start gap-3 text-xs text-red-800 animate-in fade-in duration-200">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-bold text-red-900 mb-0.5">Payment / Booking Notice</p>
+                    <p className="text-slate-600 leading-relaxed">{bookingError}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3.5 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl shadow-sm">
+                <div className="p-2.5 bg-green-50 text-green-600 rounded-xl border border-green-100/60 shrink-0">
+                  <MapPin className="w-4 h-4" />
+                </div>
                 <div>
-                  <p className="text-xs text-gray-500 font-medium">Parking lot</p>
-                  <p className="text-sm font-bold text-gray-900">{parkingLotName}</p>
-                  <p className="text-xs text-gray-500">{parkingLotAddress}</p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-0.5">Parking Location</p>
+                  <p className="text-sm font-bold text-slate-900 tracking-tight">{parkingLotName}</p>
+                  <p className="text-xs text-slate-500">{parkingLotAddress}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-xs text-gray-500 font-medium mb-0.5">Spot</p>
-                  <p className="text-sm font-bold text-gray-900">
-                    {selectedSpot.label} — Floor {selectedFloor}
+                <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Spot &amp; Floor</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-900">
+                    {selectedSpot.label} • Floor {selectedFloor}
                   </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-xs text-gray-500 font-medium mb-0.5">Vehicle</p>
-                  <p className="text-sm font-bold text-gray-900">{vehicleNumber}</p>
+                <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Vehicle</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 tracking-wide uppercase">{vehicleNumber}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-xs text-gray-500 font-medium mb-0.5">Start</p>
-                  <p className="text-sm font-bold text-gray-900">{formatDateTime(startTime)}</p>
+                <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Start</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-900">{formatDateTime(startTime)}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <p className="text-xs text-gray-500 font-medium mb-0.5">Duration</p>
-                  <p className="text-sm font-bold text-gray-900">
+                <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Duration</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-900">
                     {duration} hr{duration > 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl border border-green-200">
-                <span className="text-sm font-semibold text-gray-700">Total</span>
-                <span className="text-2xl font-bold text-green-700">₹{calculateTotalPrice()}</span>
+              <div className="flex items-center justify-between p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200/80">
+                <div>
+                  <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest block mb-0.5">Total Amount</span>
+                  <span className="text-xs text-emerald-600 font-medium">Includes all taxes</span>
+                </div>
+                <span className="text-2xl font-black text-emerald-700 tracking-tight">₹{calculateTotalPrice()}</span>
               </div>
             </div>
 
-            <div className="flex gap-3 px-6 pb-6">
-              <button
-                type="button"
-                onClick={() => setShowConfirmDialog(false)}
-                disabled={submitting}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                Go back
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleFinalConfirm()}
-                disabled={submitting}
-                className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors shadow-md disabled:opacity-50"
-              >
-                {submitting ? 'Booking…' : 'Yes, book now'}
-              </button>
+            {/* Pinned footer */}
+            <div className="px-6 pb-6 pt-2 space-y-2.5 shrink-0">
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={cancelBookingProcess}
+                  className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-bold rounded-xl transition-all text-xs tracking-wider cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  Go back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleFinalConfirm()}
+                  disabled={submitting}
+                  className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-emerald-600/25 text-xs tracking-wider cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Booking…</span>
+                    </>
+                  ) : bookingError ? (
+                    <>
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Retry Payment</span>
+                    </>
+                  ) : (
+                    'Yes, book now'
+                  )}
+                </button>
+              </div>
+
+              {submitting && (
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={cancelBookingProcess}
+                    className="text-[11px] text-slate-400 hover:text-red-600 underline font-medium cursor-pointer transition-colors"
+                  >
+                    Stuck or payment cancelled? Click here to cancel process
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -257,33 +257,57 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel, onPay, onD
 const CancelDialog: React.FC<{ booking: Booking; onConfirm: () => void; onClose: () => void }> = ({
   booking, onConfirm, onClose,
 }) => (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-      <div className="bg-red-600 px-6 py-5 text-white">
+  <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-md flex items-center justify-center z-1100 p-4 animate-in fade-in duration-200">
+    <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl shadow-slate-900/40 border border-slate-100 overflow-hidden">
+      {/* Header */}
+      <div className="bg-linerar-to-r from-red-950 via-red-900 to-rose-950 px-6 py-5 text-white flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <XCircle className="w-6 h-6" />
-          <h3 className="text-lg font-bold">Cancel Booking</h3>
+          <div className="p-2 bg-red-500/20 rounded-xl border border-red-500/30 text-red-400">
+            <XCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white tracking-tight">Cancel Booking</h3>
+            <p className="text-red-200/80 text-xs mt-0.5 font-medium">This action cannot be undone.</p>
+          </div>
         </div>
-        <p className="text-red-100 text-sm mt-1">This action cannot be undone.</p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
+          title="Close dialog"
+        >
+          <XCircle className="w-5 h-5 opacity-0 pointer-events-none" />
+        </button>
       </div>
-      <div className="p-6">
-        <p className="text-gray-700 text-sm mb-4">
-          Are you sure you want to cancel your booking at{' '}
-          <strong>{booking.parkingLotName}</strong> (Spot {booking.spot}, Ref: {booking.bookingRef})?
+
+      {/* Body */}
+      <div className="p-6 space-y-4">
+        <p className="text-slate-700 text-xs sm:text-sm leading-relaxed">
+          Are you sure you want to cancel your reservation at{' '}
+          <strong className="text-slate-900 font-bold">{booking.parkingLotName}</strong>{' '}
+          <span className="text-slate-500">(Spot <span className="font-mono font-bold text-slate-900">{booking.spot}</span>, Ref: <span className="font-mono text-slate-600">{booking.bookingRef}</span>)</span>?
         </p>
-        <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-800 mb-5">
-          Refunds are processed within 3-5 business days as per cancellation policy.
+
+        <div className="p-3.5 bg-amber-50/90 border border-amber-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900 shadow-2xs">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <p className="leading-relaxed">
+            Refunds are processed within 3-5 business days as per cancellation policy.
+          </p>
         </div>
-        <div className="flex gap-3">
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-2">
           <button
+            type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 border-2 border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-bold rounded-xl transition-all text-xs tracking-wider shadow-2xs cursor-pointer"
           >
             Keep Booking
           </button>
           <button
+            type="button"
             onClick={onConfirm}
-            className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors"
+            className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-red-600/25 text-xs tracking-wider cursor-pointer flex items-center justify-center gap-1.5"
           >
             Yes, Cancel
           </button>

@@ -235,20 +235,20 @@ function Navbar() {
 
             {/* Desktop Guest Actions */}
             {!isAuthenticated && (
-              <div className="hidden md:flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-2.5">
                 <Link
                   to="/login"
-                  className="inline-flex cursor-pointer items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="group inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-xl transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
                 >
-                  <LogIn className="w-4 h-4" />
-                  Login
+                  <LogIn className="w-4 h-4 text-slate-500 group-hover:text-slate-700 transition-colors" />
+                  <span>Login</span>
                 </Link>
                 <Link
                   to="/register"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-900 text-sm text-white hover:bg-gray-800 transition-colors"
+                  className="inline-flex items-center gap-2 px-4.5 py-2 text-xs sm:text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all shadow-md shadow-slate-900/15 cursor-pointer active:scale-[0.98]"
                 >
-                  <UserPlus className="w-4 h-4" />
-                  Register
+                  <UserPlus className="w-4 h-4 text-emerald-400" />
+                  <span>Register</span>
                 </Link>
               </div>
             )}

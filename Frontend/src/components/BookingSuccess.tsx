@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle, X, MapPin, Car, Calendar, Clock, Hash, IndianRupee } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CheckCircle, X, MapPin, Car, Calendar, Clock, Hash } from 'lucide-react';
 
 interface BookingSuccessProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ interface BookingSuccessProps {
 }
 
 const BookingSuccess: React.FC<BookingSuccessProps> = ({ isOpen, onClose, bookingDetails }) => {
+  const navigate = useNavigate();
+
   if (!isOpen) return null;
 
   const formatDateTime = (dateTimeString: string) => {
@@ -36,131 +39,133 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ isOpen, onClose, bookin
   const { date, time } = formatDateTime(bookingDetails.startTime);
   const endTime = calculateEndTime(bookingDetails.startTime, bookingDetails.duration);
 
-  return createPortal(
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-1000 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-scale-in">
+  const handleViewBookings = () => {
+    onClose();
+    navigate('/my-bookings');
+  };
 
-        {/* ── Dark Header (matches confirmation dialog style) ── */}
-        <div className="bg-gray-900 px-6 pt-6 pb-8 text-white relative">
+  return createPortal(
+    <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-md flex items-center justify-center z-1000 p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col shadow-2xl shadow-slate-900/40 border border-slate-100 overflow-hidden">
+
+        {/* Header */}
+        <div className="bg-liner-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative text-center shrink-0">
           <button
+            type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+            title="Close"
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5" />
           </button>
 
-          <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4 ring-4 ring-green-500/30">
-              <CheckCircle className="w-9 h-9 text-green-400" />
+          <div className="flex flex-col items-center">
+            <div className="w-16 h-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mb-4 border border-emerald-500/30 text-emerald-400 ring-4 ring-emerald-500/10">
+              <CheckCircle className="w-9 h-9" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-1">Booking Confirmed!</h2>
-            <p className="text-gray-400 text-sm">Your parking spot has been successfully reserved</p>
+            <h2 className="text-2xl font-black text-white tracking-tight">Booking Confirmed!</h2>
+            <p className="text-slate-400 text-xs mt-1 font-medium">Your parking spot has been successfully reserved</p>
           </div>
         </div>
 
-        {/* ── Booking Details ── */}
-        <div className="px-6 py-5 space-y-3">
-
-          {/* Parking Lot */}
-          <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-            <MapPin className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+        {/* Booking Details */}
+        <div className="p-6 space-y-3.5 flex-1 overflow-y-auto">
+          {/* Parking Lot Card */}
+          <div className="flex items-center gap-3.5 p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl shadow-2xs">
+            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100/60 shrink-0">
+              <MapPin className="w-4 h-4" />
+            </div>
             <div>
-              <p className="text-xs text-gray-500 font-medium mb-0.5">Parking Lot</p>
-              <p className="font-bold text-gray-900 text-sm">{bookingDetails.parkingLotName}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{bookingDetails.parkingLotAddress}</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-0.5">Parking Location</p>
+              <p className="text-sm font-bold text-slate-900 tracking-tight">{bookingDetails.parkingLotName}</p>
+              <p className="text-xs text-slate-500">{bookingDetails.parkingLotAddress}</p>
             </div>
           </div>
 
-          {/* Spot + Floor */}
+          {/* Spot & Floor Grid */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Hash className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs text-gray-500 font-medium">Spot</span>
+            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60 shadow-2xs">
+              <div className="flex items-center gap-1 mb-1">
+                <Hash className="w-3 h-3 text-slate-400" />
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Spot</span>
               </div>
-              <p className="text-base font-bold text-gray-900">{bookingDetails.spot}</p>
+              <p className="text-sm font-bold text-slate-900">{bookingDetails.spot}</p>
             </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Hash className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs text-gray-500 font-medium">Floor</span>
+            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60 shadow-2xs">
+              <div className="flex items-center gap-1 mb-1">
+                <Hash className="w-3 h-3 text-slate-400" />
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Floor</span>
               </div>
-              <p className="text-base font-bold text-gray-900">Floor {bookingDetails.floor}</p>
+              <p className="text-sm font-bold text-slate-900">Floor {bookingDetails.floor}</p>
             </div>
           </div>
 
-          {/* Vehicle */}
-          <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Car className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-xs text-gray-500 font-medium">Vehicle Number</span>
+          {/* Vehicle Number */}
+          <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60 shadow-2xs">
+            <div className="flex items-center gap-1 mb-1">
+              <Car className="w-3 h-3 text-slate-400" />
+              <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Vehicle Number</span>
             </div>
-            <p className="text-base font-bold text-gray-900">{bookingDetails.vehicleNumber}</p>
+            <p className="text-sm font-extrabold text-slate-900 tracking-widest font-mono uppercase">{bookingDetails.vehicleNumber}</p>
           </div>
 
-          {/* Date, Time & Duration */}
+          {/* Date, Duration, Start, End */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs text-gray-500 font-medium">Date</span>
+            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60 shadow-2xs">
+              <div className="flex items-center gap-1 mb-1">
+                <Calendar className="w-3 h-3 text-slate-400" />
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Date</span>
               </div>
-              <p className="text-sm font-bold text-gray-900">{date}</p>
+              <p className="text-xs sm:text-sm font-bold text-slate-900">{date}</p>
             </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Clock className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs text-gray-500 font-medium">Duration</span>
+            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60 shadow-2xs">
+              <div className="flex items-center gap-1 mb-1">
+                <Clock className="w-3 h-3 text-slate-400" />
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Duration</span>
               </div>
-              <p className="text-sm font-bold text-gray-900">
+              <p className="text-xs sm:text-sm font-bold text-slate-900">
                 {bookingDetails.duration} {bookingDetails.duration === 1 ? 'hour' : 'hours'}
               </p>
             </div>
 
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <p className="text-xs text-gray-500 font-medium mb-1">Start Time</p>
-              <p className="text-sm font-bold text-gray-900">{time}</p>
+            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60 shadow-2xs">
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">Start Time</p>
+              <p className="text-xs sm:text-sm font-bold text-slate-900">{time}</p>
             </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <p className="text-xs text-gray-500 font-medium mb-1">End Time</p>
-              <p className="text-sm font-bold text-gray-900">{endTime}</p>
+            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60 shadow-2xs">
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black mb-1">End Time</p>
+              <p className="text-xs sm:text-sm font-bold text-slate-900">{endTime}</p>
             </div>
           </div>
 
           {/* Total Amount */}
-          <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl border border-green-200">
-            <div className="flex items-center gap-2">
-              <IndianRupee className="w-5 h-5 text-green-600" />
-              <span className="text-sm font-semibold text-gray-700">Total Amount</span>
+          <div className="flex items-center justify-between p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200/80 shadow-2xs">
+            <div>
+              <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest block mb-0.5">Total Amount</span>
+              <span className="text-xs text-emerald-600 font-medium">Payment Verified</span>
             </div>
-            <span className="text-2xl font-bold text-green-700">₹{bookingDetails.totalPrice}</span>
+            <span className="text-2xl font-black text-emerald-700 tracking-tight">₹{bookingDetails.totalPrice}</span>
           </div>
         </div>
 
-        {/* ── Footer Buttons ── */}
-        <div className="flex gap-3 px-6 pb-6">
+        {/* Buttons */}
+        <div className="flex gap-3 px-6 pb-6 pt-2 shrink-0">
           <button
+            type="button"
             onClick={onClose}
-            className="flex-1 border-2 border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-3.5 bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-bold rounded-xl transition-all text-xs tracking-wider shadow-2xs cursor-pointer"
           >
             Done
           </button>
           <button
-            onClick={onClose}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors shadow-md"
+            type="button"
+            onClick={handleViewBookings}
+            className="flex-1 px-4 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-emerald-600/25 text-xs tracking-wider cursor-pointer flex items-center justify-center gap-2"
           >
             View My Bookings
           </button>
         </div>
       </div>
-
-      <style>{`
-        @keyframes scale-in {
-          from { opacity: 0; transform: scale(0.93); }
-          to   { opacity: 1; transform: scale(1); }
-        }
-        .animate-scale-in { animation: scale-in 0.25s ease-out; }
-      `}</style>
     </div>,
     document.body
   );

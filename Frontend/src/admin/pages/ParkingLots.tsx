@@ -63,7 +63,7 @@ const AdminParkingLots = () => {
               <tr className="bg-gray-50/50 border-b border-gray-200 text-gray-500">
                 <th className="px-6 py-4 font-semibold">Lot Name</th>
                 <th className="px-6 py-4 font-semibold">Address</th>
-                <th className="px-6 py-4 font-semibold text-center">Total Slots</th>
+                <th className="px-6 py-4 font-semibold text-center">Slots Availability</th>
                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
@@ -75,8 +75,9 @@ const AdminParkingLots = () => {
                   </td>
                   <td className="px-6 py-4 text-gray-600">{lot.address}</td>
                   <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                      {lot.totalSlots} slots
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      {lot.availableSlots ?? 0} / {lot.totalSlots ?? 0} Available
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
