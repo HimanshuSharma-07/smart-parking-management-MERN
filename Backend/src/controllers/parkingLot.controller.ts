@@ -82,9 +82,22 @@ const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
 const getAllParkingLots = asyncHandler(async (req: Request, res: Response) => {
     const parkingLots = await ParkingLots.find().sort({ createdAt: -1 })
 
+    const lotsWithRealtimeCounts = await Promise.all(
+        parkingLots.map(async (lot) => {
+            const total = await ParkingSlots.countDocuments({ lotId: lot._id });
+            const available = await ParkingSlots.countDocuments({ lotId: lot._id, status: "available" });
+            const lotObj = lot.toObject();
+            return {
+                ...lotObj,
+                totalSlots: total > 0 ? total : (lot.totalSlots || 0),
+                availableSlots: Math.max(0, available),
+            };
+        })
+    );
+
     return res
         .status(200)
-        .json(new ApiResponse(200, parkingLots, "Parking lots fetched Successfully"))
+        .json(new ApiResponse(200, lotsWithRealtimeCounts, "Parking lots fetched Successfully"))
 })
 
 const getParkingLotById = asyncHandler(async (req: Request, res: Response) => {

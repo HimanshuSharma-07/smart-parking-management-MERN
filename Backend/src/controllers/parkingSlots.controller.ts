@@ -247,7 +247,7 @@ const updateParkingSlotDetails = asyncHandler( async (req: Request, res: Respons
                     pricePerHour
                 }
             },
-            {new: true}
+            {new: true, runValidators: true}
     )
     
     if (!updatedParkingSlot) {

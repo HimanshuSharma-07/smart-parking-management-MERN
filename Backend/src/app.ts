@@ -29,6 +29,7 @@ import vehicleRouter from "./routes/vehicle.route"
 import paymentRouter from "./routes/payment.routes"
 import adminRouter from "./routes/admin.routes"
 
+
 //routes declaration
 app.use("/api/v1/users", userRouter)
 app.use("/api/v1/parking-lots", parkingLotRouter)

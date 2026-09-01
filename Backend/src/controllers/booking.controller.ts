@@ -27,6 +27,37 @@ const createBooking = asyncHandler( async (req: Request, res: Response) => {
         throw new ApiError(404, "Parking slot not found")
     }
 
+    // Calculate Amount
+    const start = new Date(startTime)
+    const end = new Date(endTime)
+    const durationMs = end.getTime() - start.getTime()
+    const hours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)))
+    const amount = hours * (parkingSlot.pricePerHour || 0)
+
+    // Check if user already has a pending/reserved booking for this slot to allow retry
+    const existingUserReservedBooking = await Booking.findOne({
+        slotId: parkingSlot._id,
+        userId,
+        bookingStatus: "reserved"
+    });
+
+    if (existingUserReservedBooking) {
+        existingUserReservedBooking.vehicleNumber = vehicleNumber;
+        existingUserReservedBooking.startTime = startTime;
+        existingUserReservedBooking.endTime = endTime;
+        await existingUserReservedBooking.save();
+
+        const razorpayOrder = await razorpay.orders.create({
+            amount: Math.round(amount * 100),
+            currency: "INR",
+            receipt: `rcpt_${Date.now()}`
+        });
+
+        return res.status(200).json(
+            new ApiResponse(200, { booking: existingUserReservedBooking, razorpayOrder, key: process.env.RAZORPAY_KEY_ID }, "Payment re-initiated successfully.")
+        );
+    }
+
     if (parkingSlot.status !== "available") {
         throw new ApiError(400, "Parking slot is not available")
     }
@@ -41,13 +72,6 @@ const createBooking = asyncHandler( async (req: Request, res: Response) => {
     if (existingBooking) {
          throw new ApiError(409, "Parking slot already booked for this time")
     }
-
-    // Calculate Amount
-    const start = new Date(startTime)
-    const end = new Date(endTime)
-    const durationMs = end.getTime() - start.getTime()
-    const hours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)))
-    const amount = hours * (parkingSlot.pricePerHour || 0)
 
     // Create Razorpay Order
     const razorpayOrder = await razorpay.orders.create({

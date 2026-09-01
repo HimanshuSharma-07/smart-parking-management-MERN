@@ -15,8 +15,6 @@ export const verifyJWT = asyncHandler( async (req: AuthRequest, _: Response, nex
     req.cookies?.accessToken || 
     req.header("Authorization")?.replace("Bearer ", "")
 
-    console.log("verifyJWT - Token Present:", !!token);
-
     if (!token) {
         throw new ApiError(401, "Unauthorized request")
     }
@@ -32,8 +30,6 @@ export const verifyJWT = asyncHandler( async (req: AuthRequest, _: Response, nex
         console.log("verifyJWT - User not found for token id:", decodedToken._id);
         throw new ApiError(401, "Invalid Access Token")
     }
-
-    console.log("verifyJWT - User found:", user.email, "Role:", user.role);
 
     req.user = user
 
