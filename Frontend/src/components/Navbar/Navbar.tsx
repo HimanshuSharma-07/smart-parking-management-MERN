@@ -108,7 +108,7 @@ function Navbar() {
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
               >
-                <HeadlessMenu.Items className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg py-2 z-[60] focus:outline-none overflow-hidden">
+                <HeadlessMenu.Items className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg py-2 z-60 focus:outline-none overflow-hidden">
                   {isAuthenticated && (
                     <div className="px-4 py-2 border-b border-gray-100">
                       <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName}</p>

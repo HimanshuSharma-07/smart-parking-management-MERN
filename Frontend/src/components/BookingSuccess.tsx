@@ -49,7 +49,7 @@ const BookingSuccess: React.FC<BookingSuccessProps> = ({ isOpen, onClose, bookin
       <div className="bg-white rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col shadow-2xl shadow-slate-900/40 border border-slate-100 overflow-hidden">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative text-center shrink-0">
+        <div className="bg-liner-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative text-center shrink-0">
           <button
             type="button"
             onClick={onClose}
