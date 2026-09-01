@@ -542,7 +542,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-1000 p-4">
         <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl">
-          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative shrink-0 rounded-t-2xl">
+          <div className="bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative shrink-0 rounded-t-2xl">
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
@@ -1038,7 +1038,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
           <div className="bg-white rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col shadow-2xl shadow-slate-900/30 border border-slate-100 overflow-hidden">
 
             {/* Dark Header */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative text-center shrink-0">
+            <div className="bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 pt-7 pb-8 text-white relative text-center shrink-0">
               <button
                 type="button"
                 onClick={() => setShowConfirmDialog(false)}
